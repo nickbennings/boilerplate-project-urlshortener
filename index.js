@@ -35,9 +35,20 @@ const generateShortUrl = () => {
   return Math.random().toString(36).substring(2, 8);
 };
 
+// Helper function to validate URL format
+const isValidUrl = (url) => {
+  const regex = /^(http:\/\/|https:\/\/)[^\s/$.?#].[^\s]*$/i;
+  return regex.test(url);
+};
+
 // POST endpoint to shorten URL
 app.post('/api/shorturl', (req, res) => {
   const { url } = req.body;
+
+  if (!isValidUrl(url)) {
+    return res.json({ error: 'invalid url' });
+  }
+
   const hostname = urlParser.parse(url).hostname;
 
   dns.lookup(hostname, (err) => {
