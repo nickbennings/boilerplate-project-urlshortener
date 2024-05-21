@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const dns = require('dns');
+const { URL } = require('url');
 
 const app = express();
 
@@ -19,8 +20,9 @@ app.post('/api/shorturl', (req, res) => {
     const originalUrl = req.body.url;
 
     // Check if URL is valid
-    const urlRegex = /^https?:\/\/(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z0-9]+(\/\S*)?$/;
-    if (!urlRegex.test(originalUrl)) {
+    try {
+        new URL(originalUrl);
+    } catch (error) {
         return res.json({ error: 'invalid url' });
     }
 
@@ -46,11 +48,6 @@ app.get('/api/shorturl/:short_url', (req, res) => {
     } else {
         res.json({ error: 'short url not found' });
     }
-});
-
-// Handle root URL
-app.get('/', (req, res) => {
-    res.send('Hello! This is the URL shortener microservice.');
 });
 
 const PORT = process.env.PORT || 3000;
