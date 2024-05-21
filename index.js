@@ -34,7 +34,10 @@ app.post('/api/shorturl', (req, res) => {
             // Generate short URL
             const shortUrl = counter++;
             urlDatabase[shortUrl] = originalUrl;
-            return res.json({ original_url: originalUrl, short_url: shortUrl });
+            return res.json({
+                original_url: originalUrl,
+                short_url: `${req.protocol}://${req.get('host')}/api/shorturl/${shortUrl}`
+            });
         }
     });
 });
@@ -52,7 +55,7 @@ app.get('/api/shorturl/:short_url', (req, res) => {
 
 // Route to handle root URL
 app.get('/', (req, res) => {
-    res.send('Welcome to the URL shortener microservice!');
+    res.send('Welcome to the URL Shortener Microservice! Use the endpoint /api/shorturl to shorten URLs.');
 });
 
 const PORT = process.env.PORT || 3000;
