@@ -1,66 +1,100 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-const dns = require('dns');
-
 const app = express();
+const bodyParser = require("body-parser")
+const dns = require('dns-lookup');
+const mongoose = require("mongoose")
+
+mongoose.connect(process.env.DB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+const urlSchema = new mongoose.Schema({
+  original_url: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  short_url: {
+    type: Number,
+    required: true,
+    unique: true
+  },
+})
+
+let url = mongoose.model('url', urlSchema)
+
 const port = process.env.PORT || 3000;
-
+app.use(bodyParser.urlencoded({ extended: false }))
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
 
-const urlDatabase = {};
-
-// Serve static files
 app.use('/public', express.static(`${process.cwd()}/public`));
 
-// Serve index.html
-app.get('/', (req, res) => {
+app.get('/', function (req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
-// API endpoint for URL shortening
-app.post('/api/shorturl', (req, res) => {
-  const { url } = req.body;
+app.post("/api/shorturl", (req, res) => {
+  let inputUrl = req.body.url
 
-  // Validate URL format
-  const urlRegex = /^(https?:\/\/)?(www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})(\/\S*)?$/;
-  if (!urlRegex.test(url)) {
-    return res.status(400).json({ error: 'invalid url' });
+  try {
+    validUrl = new URL(inputUrl)
+
+    dns(validUrl.hostname, (err, address) => {
+      if (err) {
+        res.json({ error: 'invalid url' })
+      } else {
+
+        async function findUrl() {
+          try {
+            const foundUrl = await url.find({ original_url: validUrl.href }).exec();
+
+            if (foundUrl[0]) {
+              res.json({ original_url: foundUrl[0].original_url, short_url: foundUrl[0].short_url })
+            } else {
+              let urlCount
+              const count = async () => {
+                try {
+                  urlCount = await url.countDocuments({})
+
+                  let newUrl = new url({ original_url: validUrl.href, short_url: urlCount })
+                  newUrl.save()
+                  res.json({ original_url: validUrl.href, short_url: urlCount })
+                } catch (error) {
+                  console.log(error)
+                }
+              }
+              count()
+            }
+          } catch (error) {
+            console.log(error);
+          }
+        }
+        findUrl();
+      }
+    })
+  } catch {
+    res.json({ error: 'invalid url' })
   }
+})
 
-  // Validate URL using DNS lookup
-  const hostname = new URL(url).hostname;
-  dns.lookup(hostname, (err) => {
-    if (err) {
-      return res.status(400).json({ error: 'invalid url' });
-    } else {
-      const shortUrl = generateShortUrl();
-      urlDatabase[shortUrl] = url;
-      res.json({ original_url: url, short_url: shortUrl });
+app.get("/api/shorturl/:short_url", (req, res) => {
+  let short = req.params.short_url
+
+  async function findByShort() {
+    try {
+      const foundUrl = await url.find({ short_url: short }).exec();
+      if (foundUrl[0]) {
+        res.redirect(foundUrl[0].original_url)
+      } else {
+        res.json({ error: "No short URL found for the given input" })
+      }
+    } catch (error) {
+      console.log(error);
     }
-  });
-});
-
-// API endpoint for URL redirection
-app.get('/api/shorturl/:shortUrl', (req, res) => {
-  const { shortUrl } = req.params;
-  const originalUrl = urlDatabase[shortUrl];
-  if (originalUrl) {
-    res.redirect(originalUrl);
-  } else {
-    res.status(404).json({ error: 'not found' });
   }
-});
+  findByShort();
+})
 
-// Function to generate a short URL
-function generateShortUrl() {
-  const randomString = Math.random().toString(36).substring(2, 8);
-  return randomString;
-}
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(port, function () {
+  console.log(`Listening on port ${port}`);
 });
