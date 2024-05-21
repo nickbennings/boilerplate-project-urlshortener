@@ -25,9 +25,16 @@ app.get('/', (req, res) => {
 app.post('/api/shorturl', (req, res) => {
   const { url } = req.body;
 
-  dns.lookup(url, (err) => {
+  // Validate URL
+  try {
+    new URL(url);
+  } catch (error) {
+    return res.status(400).json({ error: 'invalid url' });
+  }
+
+  dns.lookup(new URL(url).hostname, (err) => {
     if (err) {
-      res.status(400).json({ error: 'Invalid URL' });
+      return res.status(400).json({ error: 'invalid url' });
     } else {
       const shortUrl = generateShortUrl();
       urlDatabase[shortUrl] = url;
@@ -43,7 +50,7 @@ app.get('/api/shorturl/:shortUrl', (req, res) => {
   if (originalUrl) {
     res.redirect(originalUrl);
   } else {
-    res.status(404).json({ error: 'Short URL not found' });
+    res.status(404).json({ error: 'not found' });
   }
 });
 
