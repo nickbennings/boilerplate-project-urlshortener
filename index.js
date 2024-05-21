@@ -48,6 +48,11 @@ app.get('/api/shorturl/:short_url', (req, res) => {
     }
 });
 
+// Handle root URL
+app.get('/', (req, res) => {
+    res.send('Hello! This is the URL shortener microservice.');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
