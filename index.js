@@ -25,13 +25,13 @@ app.get('/', (req, res) => {
 app.post('/api/shorturl', (req, res) => {
   const { url } = req.body;
 
-  // Validate URL
-  try {
-    new URL(url);
-  } catch (error) {
+  // Validate URL format
+  const urlRegex = /^(https?:\/\/)?(www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})(\/\S*)?$/;
+  if (!urlRegex.test(url)) {
     return res.status(400).json({ error: 'invalid url' });
   }
 
+  // Validate URL using DNS lookup
   dns.lookup(new URL(url).hostname, (err) => {
     if (err) {
       return res.status(400).json({ error: 'invalid url' });
